@@ -5,6 +5,7 @@ console.log('Page Replica Generator content script loaded');
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'ping') {
         sendResponse({ status: 'ready' });
+        return true;
     }
 
     if (request.action === 'analyzePageStructure') {
@@ -14,9 +15,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         } catch (error) {
             sendResponse({ success: false, error: error.message });
         }
+        return true;
     }
 
-    return true; // Keep message channel open for async response
+    return false;
 });
 
 // Analyze the current page structure
@@ -25,47 +27,51 @@ function analyzeCurrentPage() {
     const seenElements = new Set();
 
     function getElementData(el) {
-        const rect = el.getBoundingClientRect();
-        const styles = window.getComputedStyle(el);
+        try {
+            const rect = el.getBoundingClientRect();
+            const styles = window.getComputedStyle(el);
 
-        // Get text content for specific elements only
-        let text = '';
-        if (['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'P', 'BUTTON', 'A', 'SPAN', 'LI'].includes(el.tagName)) {
-            text = Array.from(el.childNodes)
-                .filter(node => node.nodeType === 3) // Text nodes only
-                .map(node => node.textContent.trim())
-                .join(' ')
-                .substring(0, 150);
-        }
-
-        return {
-            tag: el.tagName.toLowerCase(),
-            text: text,
-            src: el.src || el.getAttribute('src') || '',
-            href: el.href || el.getAttribute('href') || '',
-            alt: el.alt || el.getAttribute('alt') || '',
-            title: el.title || el.getAttribute('title') || '',
-            id: el.id || '',
-            classList: Array.from(el.classList).slice(0, 5),
-            ariaLabel: el.getAttribute('aria-label') || '',
-            rect: {
-                width: Math.round(rect.width),
-                height: Math.round(rect.height),
-                top: Math.round(rect.top + window.scrollY),
-                left: Math.round(rect.left)
-            },
-            styles: {
-                color: styles.color,
-                backgroundColor: styles.backgroundColor,
-                fontSize: styles.fontSize,
-                fontWeight: styles.fontWeight,
-                fontFamily: styles.fontFamily,
-                display: styles.display,
-                textAlign: styles.textAlign,
-                padding: styles.padding,
-                margin: styles.margin
+            // Get text content for specific elements only
+            let text = '';
+            if (['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'P', 'BUTTON', 'A', 'SPAN', 'LI'].includes(el.tagName)) {
+                text = Array.from(el.childNodes)
+                    .filter(node => node.nodeType === 3) // Text nodes only
+                    .map(node => node.textContent.trim())
+                    .join(' ')
+                    .substring(0, 150);
             }
-        };
+
+            return {
+                tag: el.tagName.toLowerCase(),
+                text: text,
+                src: el.src || el.getAttribute('src') || '',
+                href: el.href || el.getAttribute('href') || '',
+                alt: el.alt || el.getAttribute('alt') || '',
+                title: el.title || el.getAttribute('title') || '',
+                id: el.id || '',
+                classList: Array.from(el.classList).slice(0, 5),
+                ariaLabel: el.getAttribute('aria-label') || '',
+                rect: {
+                    width: Math.round(rect.width),
+                    height: Math.round(rect.height),
+                    top: Math.round(rect.top + window.scrollY),
+                    left: Math.round(rect.left)
+                },
+                styles: {
+                    color: styles.color,
+                    backgroundColor: styles.backgroundColor,
+                    fontSize: styles.fontSize,
+                    fontWeight: styles.fontWeight,
+                    fontFamily: styles.fontFamily,
+                    display: styles.display,
+                    textAlign: styles.textAlign,
+                    padding: styles.padding,
+                    margin: styles.margin
+                }
+            };
+        } catch (e) {
+            return null;
+        }
     }
 
     // Detect page structure
@@ -101,7 +107,10 @@ function analyzeCurrentPage() {
                 // Only capture visible elements and avoid duplicates
                 if (el.offsetParent !== null && !seenElements.has(el)) {
                     seenElements.add(el);
-                    elements.push(getElementData(el));
+                    const data = getElementData(el);
+                    if (data) {
+                        elements.push(data);
+                    }
                 }
             });
         } catch (e) {
@@ -124,7 +133,7 @@ function analyzeCurrentPage() {
     };
 
     return {
-        title: document.title,
+        title: document.title || 'Untitled Page',
         url: window.location.href,
         viewport: {
             width: window.innerWidth,
@@ -159,29 +168,29 @@ function showCaptureIndicator() {
     const indicator = document.createElement('div');
     indicator.id = 'replica-capture-indicator';
     indicator.style.cssText = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: #4f46e5;
-    color: white;
-    padding: 12px 20px;
-    border-radius: 8px;
-    font-family: system-ui, sans-serif;
-    font-size: 14px;
-    font-weight: 500;
-    z-index: 999999;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    animation: slideIn 0.3s ease;
-  `;
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #4f46e5;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-family: system-ui, sans-serif;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 999999;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        animation: slideIn 0.3s ease;
+    `;
     indicator.textContent = '📸 Capturing page...';
 
     const style = document.createElement('style');
     style.textContent = `
-    @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-  `;
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    `;
     document.head.appendChild(style);
     document.body.appendChild(indicator);
 

@@ -1,18 +1,14 @@
 {
   "manifest_version": 3,
   "name": "Page Replica Generator",
-  "version": "1.0",
-  "description": "Capture page and generate responsive HTML replica with Gemini API",
-  "permissions": ["activeTab", "scripting", "storage", "tabs", "contextMenus"],
+  "version": "1.0.0",
+  "description": "Capture any webpage and generate a responsive HTML replica using Gemini AI",
+  "permissions": ["activeTab", "scripting", "storage", "tabs"],
+  "host_permissions": ["<all_urls>"],
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_title": "Page Replica Generator"
   },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"]
-    }
-  ],
   "background": {
     "service_worker": "background.js"
   }

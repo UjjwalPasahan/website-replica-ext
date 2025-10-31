@@ -5,14 +5,6 @@ console.log('Page Replica Generator background script loaded');
 chrome.runtime.onInstalled.addListener((details) => {
     if (details.reason === 'install') {
         console.log('Extension installed successfully');
-
-        // Create context menu on install
-        chrome.contextMenus.create({
-            id: 'capturePageReplica',
-            title: 'Generate Page Replica',
-            contexts: ['page']
-        });
-
     } else if (details.reason === 'update') {
         const manifest = chrome.runtime.getManifest();
         console.log('Extension updated to version:', manifest.version);
@@ -43,7 +35,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 }
             }
         );
-        return true; // Keep channel open for async response
+        return true;
     }
 
     // Get active tab information
@@ -64,39 +56,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
 
-    // Inject content script if needed
-    if (request.action === 'injectContentScript') {
-        chrome.scripting.executeScript({
-            target: { tabId: request.tabId },
-            files: ['content.js']
-        }).then(() => {
-            sendResponse({ success: true });
-        }).catch((error) => {
-            sendResponse({
-                success: false,
-                error: error.message
-            });
-        });
-        return true;
-    }
-
     return false;
 });
 
-// Handle context menu clicks
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-    if (info.menuItemId === 'capturePageReplica') {
-        console.log('Context menu clicked on tab:', tab.id);
-        // User should click extension icon to open popup
-    }
-});
-
-// Monitor storage changes (e.g., API key updates)
+// Monitor storage changes
 chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === 'sync' && changes.geminiApiKey) {
         console.log('Gemini API key updated');
 
-        // Update badge to show API key is set
         if (changes.geminiApiKey.newValue) {
             chrome.action.setBadgeText({ text: '✓' });
             chrome.action.setBadgeBackgroundColor({ color: '#10b981' });
@@ -107,11 +74,4 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     }
 });
 
-// Keep service worker alive
-let keepAliveInterval = setInterval(() => {
-    chrome.runtime.getPlatformInfo(() => {
-        // Dummy call to keep service worker alive
-    });
-}, 20000);
-
-console.log('Background script initialization complete');
+console.log('Background script initialization complete');   
